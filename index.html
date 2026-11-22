@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>대한민국 국군 전역일 & D-Day 계산기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
+  <style>
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #14532d 100%);
+      min-height: 100vh;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+    }
+    .branch-btn.active {
+      background-color: #15803d;
+      color: #ffffff;
+      border-color: #15803d;
+      box-shadow: 0 4px 12px rgba(21, 128, 61, 0.3);
+      transform: translateY(-1px);
+    }
+    .progress-bar-fill {
+      transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  </style>
+</head>
+<body class="text-slate-800 py-8 px-4 flex items-center justify-center">
+
+  <div class="max-w-2xl w-full space-y-6">
+    <!-- 헤더 -->
+    <header class="text-center text-white space-y-2">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold tracking-wider uppercase">
+        <span>ROK Armed Forces</span>
+        <span>•</span>
+        <span>Service Simulator</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+        대한민국 국군 전역일 & D-Day 계산기
+      </h1>
+      <p class="text-slate-300 text-sm">
+        군종과 입대일, 기준일을 입력하면 전역일과 복무 진행률, 예상 진급일을 계산합니다.
+      </p>
+    </header>
+
+    <!-- 입력 카드 -->
+    <main class="glass-card rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6 border border-white/20">
+      <!-- 1. 군종 선택 -->
+      <div class="space-y-2.5">
+        <label class="block text-sm font-bold text-slate-700">
+          1. 복무 군종 선택
+        </label>
+        <div id="branch-group" class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <button type="button" data-branch="육군" data-months="18" class="branch-btn active py-2.5 px-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:border-emerald-500 transition-all">육군</button>
+          <button type="button" data-branch="해군" data-months="18" class="branch-btn py-2.5 px-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:border-emerald-500 transition-all">해군</button>
+          <button type="button" data-branch="해병대" data-months="18" class="branch-btn py-2.5 px-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:border-emerald-500 transition-all">해병대</button>
+          <button type="button" data-branch="특전사" data-months="18" class="branch-btn py-2.5 px-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:border-emerald-500 transition-all">특전사</button>
+          <button type="button" data-branch="카투사" data-months="18" class="branch-btn py-2.5 px-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:border-emerald-500 transition-all">카투사</button>
+          <button type="button" data-branch="공군" data-months="21" class="branch-btn py-2.5 px-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:border-emerald-500 transition-all">공군</button>
+        </div>
+        <p id="branch-info" class="text-xs text-emerald-700 font-medium">
+          * 선택된 군종: 육군 (복무 기간 18개월 / 1년 6개월)
+        </p>
+      </div>
+
+      <!-- 2. 날짜 입력 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <label for="enlistment-date" class="block text-sm font-bold text-slate-700">
+            2. 입대일
+          </label>
+          <input
+            type="date"
+            id="enlistment-date"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition"
+          />
+        </div>
+
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label for="current-date" class="block text-sm font-bold text-slate-700">
+              3. 기준일 (오늘 날짜)
+            </label>
+            <button
+              type="button"
+              id="today-btn"
+              class="text-xs font-semibold text-emerald-700 hover:text-emerald-800 underline underline-offset-2"
+            >
+              오늘 날짜로 설정
+            </button>
+          </div>
+          <input
+            type="date"
+            id="current-date"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition"
+          />
+        </div>
+      </div>
+
+      <!-- 오류 메시지 -->
+      <div id="error-box" class="hidden p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium"></div>
+
+      <!-- 계산 실행 버튼 -->
+      <button
+        type="button"
+        id="calculate-btn"
+        class="w-full py-3.5 px-6 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] text-white font-bold text-base shadow-lg shadow-emerald-700/25 transition-all cursor-pointer"
+      >
+        전역일 및 복무 현황 계산하기
+      </button>
+
+      <!-- 결과 리포트 영역 -->
+      <section id="result-section" class="hidden pt-4 border-t border-slate-200 space-y-5 animate-fade-in">
+        <!-- 상단 배지 & 상태 타이틀 -->
+        <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-900 text-white p-4 rounded-xl">
+          <div>
+            <span id="res-branch-badge" class="inline-block px-2.5 py-0.5 rounded-md bg-emerald-500 text-slate-950 text-xs font-extrabold mb-1">
+              육군 • 18개월
+            </span>
+            <h2 id="res-headline" class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+              전역까지 D - 000일
+            </h2>
+          </div>
+          <div class="text-right">
+            <span class="block text-xs text-slate-400">현재 예상 계급</span>
+            <span id="res-rank" class="inline-block mt-0.5 px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-emerald-400 font-bold text-sm">
+              상병
+            </span>
+          </div>
+        </div>
+
+        <!-- 응원 메시지 -->
+        <div id="res-message" class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm font-medium">
+          💪 복무의 절반을 향해 달려가고 있습니다! 건강하게 복무하세요.
+        </div>
+
+        <!-- 프로그레스 바 -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-end">
+            <span class="text-sm font-bold text-slate-700">전체 복무 진행률</span>
+            <span id="res-progress-text" class="text-2xl font-extrabold text-emerald-700">0.0%</span>
+          </div>
+          <div class="w-full h-5 bg-slate-200 rounded-full overflow-hidden p-0.5">
+            <div id="res-progress-bar" class="progress-bar-fill h-full bg-gradient-to-r from-emerald-600 to-green-500 rounded-full" style="width: 0%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-slate-500 font-medium">
+            <span id="res-elapsed">경과일: D + 0일</span>
+            <span id="res-total">총 복무일: 000일</span>
+          </div>
+        </div>
+
+        <!-- 상세 날짜 그리드 -->
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <span class="block text-xs text-slate-500 font-medium">입대일</span>
+            <strong id="res-enlistment" class="block mt-1 text-sm sm:text-base font-bold text-slate-800">-</strong>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <span class="block text-xs text-slate-500 font-medium">입력 기준일</span>
+            <strong id="res-current" class="block mt-1 text-sm sm:text-base font-bold text-slate-800">-</strong>
+          </div>
+          <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+            <span class="block text-xs text-emerald-700 font-semibold">전역 예정일</span>
+            <strong id="res-discharge" class="block mt-1 text-sm sm:text-base font-extrabold text-emerald-800">-</strong>
+          </div>
+        </div>
+
+        <!-- AI 개선 기능: 진급 예정일 타임라인 -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">
+            📅 예상 진급 타임라인 (입대일 기준)
+          </h3>
+          <div id="promotion-timeline" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <!-- JS로 동적 생성 -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // 1. 월(Month)을 정확히 더해주는 함수 (기존 파이썬 add_months 로직 이식)
+    function addMonths(sourceDate, months) {
+      const totalMonths = sourceDate.getMonth() + months;
+      const year = sourceDate.getFullYear() + Math.floor(totalMonths / 12);
+      const month = ((totalMonths % 12) + 12) % 12; // 0 ~ 11
+
+      // 윤년 및 각 달의 마지막 날짜 처리
+      const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+      const daysInMonth = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      const day = Math.min(sourceDate.getDate(), daysInMonth[month]);
+
+      return new Date(year, month, day);
+    }
+
+    // 날짜 문자열(YYYY-MM-DD)을 로컬 자정 Date 객체로 안전하게 파싱
+    function parseLocalDate(dateStr) {
+      if (!dateStr) return null;
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    // Date 객체를 YYYY-MM-DD 문자열로 포맷
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    // 두 날짜 사이의 일수 차이 계산
+    function diffDays(dateA, dateB) {
+      const utcA = Date.UTC(dateA.getFullYear(), dateA.getMonth(), dateA.getDate());
+      const utcB = Date.UTC(dateB.getFullYear(), dateB.getMonth(), dateB.getDate());
+      return Math.floor((utcA - utcB) / (1000 * 60 * 60 * 24));
+    }
+
+    // 진급일 계산 (일반적인 진급 주기 기준: 입대 후 2개월 일병, +6개월 상병, +6개월 병장, 매월 1일 진급 반영)
+    function getPromotionDates(enlistmentDate) {
+      const toFirstOfNextMonth = (date, addM) => {
+        const target = addMonths(date, addM);
+        return new Date(target.getFullYear(), target.getMonth(), 1);
+      };
+
+      const ilbyeong = enlistmentDate.getDate() === 1
+        ? addMonths(enlistmentDate, 2)
+        : toFirstOfNextMonth(enlistmentDate, 3);
+
+      const sangbyeong = addMonths(ilbyeong, 6);
+      const byeongjang = addMonths(sangbyeong, 6);
+
+      return [
+        { rank: '이병', date: enlistmentDate },
+        { rank: '일병', date: ilbyeong },
+        { rank: '상병', date: sangbyeong },
+        { rank: '병장', date: byeongjang }
+      ];
+    }
+
+    // DOM 요소 참조
+    let selectedBranch = '육군';
+    let serviceMonths = 18;
+
+    const branchButtons = document.querySelectorAll('.branch-btn');
+    const branchInfo = document.getElementById('branch-info');
+    const enlistmentInput = document.getElementById('enlistment-date');
+    const currentInput = document.getElementById('current-date');
+    const todayBtn = document.getElementById('today-btn');
+    const calculateBtn = document.getElementById('calculate-btn');
+    const errorBox = document.getElementById('error-box');
+    const resultSection = document.getElementById('result-section');
+
+    // 초기 기본 날짜 세팅 (오늘 날짜 & 예시 입대일)
+    const today = new Date();
+    currentInput.value = formatDate(today);
+    const defaultEnlistment = addMonths(today, -6);
+    enlistmentInput.value = formatDate(defaultEnlistment);
+
+    // 군종 버튼 클릭 이벤트
+    branchButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        branchButtons.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedBranch = btn.dataset.branch;
+        serviceMonths = Number(btn.dataset.months);
+        const years = Math.floor(serviceMonths / 12);
+        const remMonths = serviceMonths % 12;
+        branchInfo.textContent = `* 선택된 군종: ${selectedBranch} (복무 기간 ${serviceMonths}개월 / ${years}년 ${remMonths}개월)`;
+      });
+    });
+
+    // 오늘 날짜로 설정 버튼
+    todayBtn.addEventListener('click', () => {
+      currentInput.value = formatDate(new Date());
+    });
+
+    // 계산 메인 함수
+    function calculateMilitaryDday() {
+      errorBox.classList.add('hidden');
+
+      const enlistmentDate = parseLocalDate(enlistmentInput.value);
+      const currentDate = parseLocalDate(currentInput.value);
+
+      if (!enlistmentDate || !currentDate) {
+        errorBox.textContent = '❌ 입대일과 기준일을 모두 올바르게 선택해주세요.';
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      // 전역일 및 일수 계산 (기존 파이썬 로직 동일)
+      const dischargeDate = addMonths(enlistmentDate, serviceMonths);
+      const totalDays = diffDays(dischargeDate, enlistmentDate);
+      const elapsedDays = diffDays(currentDate, enlistmentDate);
+      const remainingDays = diffDays(dischargeDate, currentDate);
+
+      let progress = 0.0;
+      if (totalDays > 0) {
+        progress = (elapsedDays / totalDays) * 100;
+        progress = Math.max(0.0, Math.min(100.0, progress));
+      }
+
+      // 결과 UI 업데이트
+      document.getElementById('res-branch-badge').textContent = `${selectedBranch} • ${serviceMonths}개월 복무`;
+      document.getElementById('res-enlistment').textContent = formatDate(enlistmentDate);
+      document.getElementById('res-current').textContent = formatDate(currentDate);
+      document.getElementById('res-discharge').textContent = formatDate(dischargeDate);
+      document.getElementById('res-total').textContent = `총 복무일: ${totalDays}일`;
+
+      const headlineEl = document.getElementById('res-headline');
+      const messageEl = document.getElementById('res-message');
+      const elapsedEl = document.getElementById('res-elapsed');
+
+      if (remainingDays > 0) {
+        headlineEl.textContent = `남은 D-Day : D - ${remainingDays}일`;
+        elapsedEl.textContent = elapsedDays >= 0 ? `경과일: D + ${elapsedDays}일` : `입대까지 D - ${Math.abs(elapsedDays)}일`;
+
+        if (elapsedDays < 0) {
+          messageEl.textContent = '🫡 입대 전입니다. 건강한 모습으로 입대 준비 잘하시기 바랍니다!';
+        } else if (progress < 25) {
+          messageEl.textContent = '🌱 군 생활의 시작 단계입니다. 새로운 환경에 차근차근 적응해 나가세요!';
+        } else if (progress < 50) {
+          messageEl.textContent = '🔥 어느덧 일병·상병을 향해 가고 있습니다. 절반의 고지가 머지않았습니다!';
+        } else if (progress < 80) {
+          messageEl.textContent = '⚡ 복무율 50% 돌파! 이제 남은 날이 지나온 날보다 적습니다.';
+        } else {
+          messageEl.textContent = '🏁 전역이 코앞입니다! 마지막까지 안전하게 유종의 미를 거두세요!';
+        }
+      } else if (remainingDays === 0) {
+        headlineEl.textContent = '🎉 D-Day! 오늘이 바로 전역일입니다!';
+        elapsedEl.textContent = `경과일: D + ${elapsedDays}일`;
+        messageEl.textContent = '🎊 전역을 진심으로 축하합니다! 그동안 국가를 위해 헌신해 주셔서 감사합니다.';
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        }
+      } else {
+        headlineEl.textContent = `✨ 전역 완료 (전역 후 ${Math.abs(remainingDays)}일 경과)`;
+        elapsedEl.textContent = `총 복무 완료 (${totalDays}일)`;
+        messageEl.textContent = '🎖️ 이미 명예롭게 전역을 마쳤습니다. 멋진 예비역의 앞날을 응원합니다!';
+      }
+
+      // 프로그레스 바 애니메이션
+      document.getElementById('res-progress-text').textContent = `${progress.toFixed(1)}%`;
+      document.getElementById('res-progress-bar').style.width = `${progress.toFixed(1)}%`;
+
+      // 진급 타임라인 및 현재 계급 판별
+      const promotions = getPromotionDates(enlistmentDate);
+      let currentRank = '입대 전';
+
+      if (remainingDays <= 0) {
+        currentRank = '예비역 (병장 만기전역)';
+      } else if (elapsedDays >= 0) {
+        for (const p of promotions) {
+          if (currentDate >= p.date) {
+            currentRank = p.rank;
+          }
+        }
+      }
+      document.getElementById('res-rank').textContent = currentRank;
+
+      const timelineContainer = document.getElementById('promotion-timeline');
+      timelineContainer.innerHTML = promotions
+        .map((item) => {
+          const achieved = currentDate >= item.date;
+          return `
+            <div class="p-2.5 rounded-lg border ${achieved ? 'bg-white border-emerald-300 shadow-xs' : 'bg-slate-100 border-slate-200 opacity-75'}">
+              <div class="flex items-center justify-between">
+                <span class="font-bold ${achieved ? 'text-emerald-700' : 'text-slate-600'}">${item.rank}</span>
+                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ${achieved ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}">
+                  ${achieved ? '달성' : '예정'}
+                </span>
+              </div>
+              <div class="mt-1 font-medium text-slate-700">${formatDate(item.date)}</div>
+            </div>
+          `;
+        })
+        .join('');
+
+      resultSection.classList.remove('hidden');
+    }
+
+    calculateBtn.addEventListener('click', calculateMilitaryDday);
+  </script>
+</body>
+</html>
