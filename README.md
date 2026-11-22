@@ -23,9 +23,3 @@ Markdown
 
 ---
 
-## 🛠️ 사용 기술
-- **HTML5 / CSS3**
-- **JavaScript (Vanilla JS)**
-- **Tailwind CSS** (CDN)
-- **Canvas Confetti** (전역일 축하 애니메이션 라이브러리)
-- **GitHub Pages** (정적 웹 호스팅)
